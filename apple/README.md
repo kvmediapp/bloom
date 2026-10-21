@@ -1,6 +1,6 @@
 # Bloom tvOS app (Phase 0)
 
-The sources in `BloomTV/` are plain SwiftUI. There is no `.xcodeproj` yet; make
+The sources in `Sources/` are plain SwiftUI. There is no `.xcodeproj` yet; make
 one once and the files drop in. These steps are written from Apple's usual
 Xcode flow and have **not been run yet**, so expect to adjust a menu name.
 
@@ -10,7 +10,7 @@ Xcode flow and have **not been run yet**, so expect to adjust a menu name.
 2. In Xcode: **File > New > Project > tvOS > App**. Name it `BloomTV`, interface
    SwiftUI, and save it in this `apple/` folder.
 3. Delete the template's `ContentView.swift` and `...App.swift`, then drag the
-   files from `BloomTV/` in this repo into the project (tick "Copy items if
+   files from `Sources/` in this repo into the project (tick "Copy items if
    needed" off, so they stay in the repo).
 4. Sign in to your Apple ID under **Xcode > Settings > Accounts** (a free ID is
    enough for Phase 0) and set the project's Team under **Signing & Capabilities**.

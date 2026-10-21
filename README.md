@@ -14,7 +14,7 @@ the system player.
 | --- | --- |
 | `server/` Go server: scan, playback plan, remux to HLS | Built and tested (`make test`) |
 | `docker-compose.yml`, `server/Dockerfile` | Written; not yet run on Unraid |
-| `apple/BloomTV/` tvOS app sources | Written; **not yet built in Xcode** |
+| `apple/Sources/` tvOS app sources | Written; **not yet built in Xcode** |
 | `scripts/remux-test.sh` | Written; not yet run on real files |
 
 ## Layout
@@ -25,7 +25,7 @@ server/            Go server (bloomd)
   internal/media/    ffprobe scanning and the playback decision
   internal/hls/      ffmpeg remux to fragmented-MP4 HLS
   internal/api/      HTTP routes
-apple/BloomTV/     SwiftUI sources for the tvOS app
+apple/Sources/     SwiftUI sources for the tvOS app
 scripts/           helper scripts
 docs/              plan and notes
 ```
