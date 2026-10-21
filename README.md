@@ -32,8 +32,9 @@ docs/              plan and notes
 
 ## Run the server on Unraid
 
-1. Edit the two host paths in `docker-compose.yml` (your media share, and an
-   appdata folder for the cache).
+1. Bloom expects the TRaSH Guides layout: your `data` share mounted at `/data`,
+   with movies and shows in `data/media`. Edit the two host paths in
+   `docker-compose.yml` if yours differ (data share, and an appdata folder).
 2. Optionally set `BLOOM_TOKEN` to a long random string.
 3. `docker compose up -d --build`
 4. Check it: `curl http://TOWER_IP:8484/health`, then

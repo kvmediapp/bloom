@@ -22,8 +22,8 @@ func env(key, fallback string) string {
 }
 
 func main() {
-	mediaDir := env("BLOOM_MEDIA_DIR", "/media")
-	cacheDir := env("BLOOM_CACHE_DIR", "/cache")
+	mediaDir := env("BLOOM_MEDIA_DIR", "/data/media")
+	cacheDir := env("BLOOM_CACHE_DIR", "/config")
 	addr := env("BLOOM_ADDR", ":8484")
 	token := os.Getenv("BLOOM_TOKEN")
 

@@ -2,8 +2,11 @@
 #
 #   docker compose up -d --build
 #
-# Edit the two host paths below. Media is mounted read-only, so Bloom can
-# never change your library. Plex keeps working alongside it.
+# Follows the TRaSH Guides layout: one /data share on the host, mounted at
+# /data in every container, with movies and shows under /data/media.
+#   /mnt/user/data/media/movies, /mnt/user/data/media/tv
+# Mounted read-only, so Bloom can never change your library. Plex, Radarr and
+# Sonarr keep working alongside it. App settings live in appdata, as /config.
 services:
   bloom:
     build: ./server
@@ -14,9 +17,13 @@ services:
     environment:
       # Optional but recommended: clients must send "Authorization: Bearer <token>".
       BLOOM_TOKEN: ""
+      BLOOM_MEDIA_DIR: /data/media
+      BLOOM_CACHE_DIR: /config
+      TZ: America/New_York
+    user: "99:100"   # Unraid nobody:users, same as the TRaSH PUID/PGID
     volumes:
-      - /mnt/user/data/media:/media:ro        # <- your movies and shows share
-      - /mnt/user/appdata/bloom:/cache   # <- scan results and remuxed segments
+      - /mnt/user/data:/data:ro               # TRaSH root share (media lives in /data/media)
+      - /mnt/user/appdata/bloom:/config       # scan results and remuxed segments
     # Phase 2 adds Quick Sync transcoding. Uncomment then:
     # devices:
     #   - /dev/dri:/dev/dri

@@ -10,9 +10,9 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends ffmpeg ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 COPY --from=build /out/bloomd /usr/local/bin/bloomd
-ENV BLOOM_MEDIA_DIR=/media \
-    BLOOM_CACHE_DIR=/cache \
+ENV BLOOM_MEDIA_DIR=/data/media \
+    BLOOM_CACHE_DIR=/config \
     BLOOM_ADDR=:8484
-VOLUME /cache
+VOLUME /config
 EXPOSE 8484
 ENTRYPOINT ["bloomd"]

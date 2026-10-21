@@ -2,7 +2,7 @@
 # Phase 0 check: remux one file to HLS the same way the Bloom server does and
 # report how long it took. Run it on Tower (or anywhere ffmpeg is installed).
 #
-#   scripts/remux-test.sh "/mnt/user/media/Movies/Some Film (2024).mkv"
+#   scripts/remux-test.sh "/mnt/user/data/media/movies/Some Film (2024).mkv"
 #
 # Then copy the output folder to a Mac and validate it with Apple's tool:
 #   mediastreamvalidator /path/to/out/index.m3u8
