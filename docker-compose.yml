@@ -4,7 +4,7 @@
 #
 # Follows the TRaSH Guides layout: one /data share on the host, mounted at
 # /data in every container, with movies and shows under /data/media.
-#   /mnt/user/data/media/movies, /mnt/user/data/media/tv
+#   /mnt/user/data/media/movies, /mnt/user/data/media/shows
 # Mounted read-only, so Bloom can never change your library. Plex, Radarr and
 # Sonarr keep working alongside it. App settings live in appdata, as /config.
 services:
