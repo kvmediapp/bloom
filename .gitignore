@@ -1,0 +1,13 @@
+# Go
+server/bin/
+*.test
+
+# Local data
+cache/
+library.json
+
+# Xcode
+apple/**/xcuserdata/
+apple/**/DerivedData/
+*.xcuserstate
+.DS_Store

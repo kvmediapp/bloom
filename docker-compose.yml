@@ -1,0 +1,22 @@
+# Bloom server for Unraid (or any Docker host).
+#
+#   docker compose up -d --build
+#
+# Edit the two host paths below. Media is mounted read-only, so Bloom can
+# never change your library. Plex keeps working alongside it.
+services:
+  bloom:
+    build: ./server
+    container_name: bloom
+    restart: unless-stopped
+    ports:
+      - "8484:8484"
+    environment:
+      # Optional but recommended: clients must send "Authorization: Bearer <token>".
+      BLOOM_TOKEN: ""
+    volumes:
+      - /mnt/user/data/media:/media:ro        # <- your movies and shows share
+      - /mnt/user/appdata/bloom:/cache   # <- scan results and remuxed segments
+    # Phase 2 adds Quick Sync transcoding. Uncomment then:
+    # devices:
+    #   - /dev/dri:/dev/dri
