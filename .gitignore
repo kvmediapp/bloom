@@ -11,3 +11,7 @@ apple/**/xcuserdata/
 apple/**/DerivedData/
 *.xcuserstate
 .DS_Store
+.build/
+xcuserdata/
+*.xcuserstate
+DerivedData/
