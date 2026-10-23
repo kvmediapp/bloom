@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/kvmediapp/bloom/server/internal/api"
@@ -32,6 +33,16 @@ func main() {
 	}
 
 	lib := media.NewLibrary(mediaDir)
+	// Comma-separated subfolders of the media directory to scan. Set to an
+	// empty value ("BLOOM_LIBRARIES=-") to scan everything.
+	libs := env("BLOOM_LIBRARIES", "movies,shows")
+	if libs != "-" {
+		for _, f := range strings.Split(libs, ",") {
+			if f = strings.TrimSpace(f); f != "" {
+				lib.Folders = append(lib.Folders, f)
+			}
+		}
+	}
 	cacheFile := filepath.Join(cacheDir, "library.json")
 	if err := lib.Load(cacheFile); err != nil {
 		log.Printf("load library cache: %v", err)

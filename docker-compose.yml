@@ -19,6 +19,8 @@ services:
       BLOOM_TOKEN: ""
       BLOOM_MEDIA_DIR: /data/media
       BLOOM_CACHE_DIR: /config
+      # Subfolders of /data/media to scan (comma separated). Exclusive folders are left out on purpose.
+      BLOOM_LIBRARIES: movies,shows
       TZ: America/New_York
     user: "99:100"   # Unraid nobody:users, same as the TRaSH PUID/PGID
     volumes:

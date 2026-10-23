@@ -34,6 +34,9 @@ type Item struct {
 // Library holds the scanned items.
 type Library struct {
 	MediaDir string
+	// Folders limits scanning to these subfolders of MediaDir. Empty means
+	// scan everything under MediaDir.
+	Folders []string
 
 	mu    sync.RWMutex
 	items []Item
@@ -72,25 +75,36 @@ func (l *Library) set(items []Item) {
 
 // Scan walks the media directory and probes every video file.
 func (l *Library) Scan(ctx context.Context) error {
-	var paths []string
-	err := filepath.WalkDir(l.MediaDir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
+	roots := []string{l.MediaDir}
+	if len(l.Folders) > 0 {
+		roots = roots[:0]
+		for _, f := range l.Folders {
+			roots = append(roots, filepath.Join(l.MediaDir, f))
 		}
-		if strings.HasPrefix(d.Name(), ".") && path != l.MediaDir {
-			if d.IsDir() {
-				return filepath.SkipDir
+	}
+	var paths []string
+	for _, root := range roots {
+		root := root
+		err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if strings.HasPrefix(d.Name(), ".") && path != root {
+				if d.IsDir() {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if !d.IsDir() && videoExts[strings.ToLower(filepath.Ext(path))] {
+				paths = append(paths, path)
 			}
 			return nil
+		})
+		if err != nil {
+			log.Printf("walk %s: %v (skipping)", root, err)
 		}
-		if !d.IsDir() && videoExts[strings.ToLower(filepath.Ext(path))] {
-			paths = append(paths, path)
-		}
-		return nil
-	})
-	if err != nil {
-		return fmt.Errorf("walk %s: %w", l.MediaDir, err)
 	}
+	log.Printf("scan started: %d video files in %v", len(paths), roots)
 
 	var (
 		wg    sync.WaitGroup
@@ -125,6 +139,14 @@ func (l *Library) Scan(ctx context.Context) error {
 			}
 			mu.Lock()
 			items = append(items, it)
+			// Publish partial results so /health and the app show progress.
+			if len(items)%50 == 0 {
+				snap := make([]Item, len(items))
+				copy(snap, items)
+				mu.Unlock()
+				l.set(snap)
+				return
+			}
 			mu.Unlock()
 		}(path)
 	}
