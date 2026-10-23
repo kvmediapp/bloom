@@ -35,6 +35,7 @@ func (s *Server) Handler() http.Handler {
 	})
 	mux.HandleFunc("GET /api/items", s.items)
 	mux.HandleFunc("POST /api/scan", s.scan)
+	mux.HandleFunc("POST /api/items/{id}/prepare", s.prepare)
 	mux.HandleFunc("GET /stream/{id}/{file}", s.stream)
 	return logRequests(s.auth(mux))
 }
@@ -54,6 +55,25 @@ func (s *Server) auth(next http.Handler) http.Handler {
 
 func (s *Server) items(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, s.Lib.Items())
+}
+
+// prepare starts the remux and keyframe index for a title ahead of playback,
+// so pressing Play on its detail screen is instant. Safe to call repeatedly.
+func (s *Server) prepare(w http.ResponseWriter, r *http.Request) {
+	it, ok := s.Lib.Get(r.PathValue("id"))
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	if it.Plan.Mode == "unsupported" {
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"ok": false})
+		return
+	}
+	if err := s.HLS.Ensure(it); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusAccepted, map[string]any{"ok": true})
 }
 
 func (s *Server) scan(w http.ResponseWriter, r *http.Request) {

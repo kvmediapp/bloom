@@ -24,6 +24,11 @@ type Item struct {
 	ID          string  `json:"id"`
 	Path        string  `json:"path"` // relative to the media directory
 	Title       string  `json:"title"`
+	Kind        string  `json:"kind"` // "movie" or "episode"
+	Year        int     `json:"year,omitempty"`
+	Show        string  `json:"show,omitempty"`
+	Season      int     `json:"season,omitempty"`
+	Episode     int     `json:"episode,omitempty"`
 	DurationSec float64 `json:"durationSec"`
 	SizeBytes   int64   `json:"sizeBytes"`
 	Resolution  string  `json:"resolution"`
@@ -63,7 +68,22 @@ func (l *Library) Get(id string) (Item, bool) {
 }
 
 func (l *Library) set(items []Item) {
-	sort.Slice(items, func(i, j int) bool { return strings.ToLower(items[i].Title) < strings.ToLower(items[j].Title) })
+	for i := range items {
+		enrich(&items[i])
+	}
+	sort.Slice(items, func(i, j int) bool {
+		a, b := items[i], items[j]
+		if a.Show != b.Show {
+			return strings.ToLower(a.Show) < strings.ToLower(b.Show)
+		}
+		if a.Season != b.Season {
+			return a.Season < b.Season
+		}
+		if a.Episode != b.Episode {
+			return a.Episode < b.Episode
+		}
+		return strings.ToLower(a.Title) < strings.ToLower(b.Title)
+	})
 	m := make(map[string]Item, len(items))
 	for _, it := range items {
 		m[it.ID] = it
