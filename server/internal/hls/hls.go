@@ -195,6 +195,41 @@ func BuildArgs(src string, p media.Plan) []string {
 	return args
 }
 
+// Status reports "idle" (nothing started), "preparing" (the playlist is still
+// being built) or "ready" (the playlist exists and playback can begin).
+func (m *Manager) Status(id string) string {
+	m.mu.Lock()
+	j := m.jobs[id]
+	m.mu.Unlock()
+	if j == nil {
+		return "idle"
+	}
+	select {
+	case <-j.ready:
+		if j.err != nil {
+			return "idle"
+		}
+		return "ready"
+	default:
+		return "preparing"
+	}
+}
+
+// Active counts remux jobs whose ffmpeg is still running.
+func (m *Manager) Active() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	n := 0
+	for _, j := range m.jobs {
+		select {
+		case <-j.done:
+		default:
+			n++
+		}
+	}
+	return n
+}
+
 // WaitPlaylist blocks until the full playlist has been written.
 func (m *Manager) WaitPlaylist(ctx context.Context, id string) error {
 	m.mu.Lock()

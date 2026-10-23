@@ -36,6 +36,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/items", s.items)
 	mux.HandleFunc("POST /api/scan", s.scan)
 	mux.HandleFunc("POST /api/items/{id}/prepare", s.prepare)
+	mux.HandleFunc("GET /api/items/{id}/status", s.status)
 	mux.HandleFunc("GET /stream/{id}/{file}", s.stream)
 	return logRequests(s.auth(mux))
 }
@@ -57,8 +58,14 @@ func (s *Server) items(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, s.Lib.Items())
 }
 
-// prepare starts the remux and keyframe index for a title ahead of playback,
-// so pressing Play on its detail screen is instant. Safe to call repeatedly.
+// maxBackgroundPrepares limits how many titles are prepared at once when the
+// request comes from browsing rather than from pressing Play. Reading several
+// large files at once from spinning disks makes every one of them slow.
+const maxBackgroundPrepares = 2
+
+// prepare starts the remux and keyframe index for a title ahead of playback.
+// With ?play=1 the title is started even if other titles are busy. Safe to
+// call repeatedly. The response says how far along the title is.
 func (s *Server) prepare(w http.ResponseWriter, r *http.Request) {
 	it, ok := s.Lib.Get(r.PathValue("id"))
 	if !ok {
@@ -66,14 +73,33 @@ func (s *Server) prepare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if it.Plan.Mode == "unsupported" {
-		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"ok": false})
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"state": "unsupported"})
+		return
+	}
+	if s.HLS.Status(it.ID) == "idle" && r.URL.Query().Get("play") != "1" && s.HLS.Active() >= maxBackgroundPrepares {
+		writeJSON(w, http.StatusAccepted, map[string]any{"state": "idle"})
 		return
 	}
 	if err := s.HLS.Ensure(it); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, http.StatusAccepted, map[string]any{"ok": true})
+	writeJSON(w, http.StatusAccepted, map[string]any{"state": s.HLS.Status(it.ID)})
+}
+
+// status tells the app whether a title can start playing right now.
+func (s *Server) status(w http.ResponseWriter, r *http.Request) {
+	it, ok := s.Lib.Get(r.PathValue("id"))
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	state := s.HLS.Status(it.ID)
+	if state == "idle" && s.HLS.Finished(it.ID) {
+		_ = s.HLS.Ensure(it) // already remuxed earlier: reattach, it is instantly ready
+		state = s.HLS.Status(it.ID)
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"state": state})
 }
 
 func (s *Server) scan(w http.ResponseWriter, r *http.Request) {
