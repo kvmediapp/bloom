@@ -1,0 +1,37 @@
+name: Deploy to Tower
+
+# Runs on the self-hosted runner that lives on the Unraid server (label:
+# bloom-tower). Only pushes to main trigger it, never pull requests, so code
+# from a fork can never run on Tower.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "server/**"
+      - "docker-compose.yml"
+      - ".github/workflows/deploy-tower.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-tower
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, bloom-tower]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rebuild and restart Bloom
+        # -p bloom-src keeps the same Compose project as the manual setup,
+        # so this replaces the running container instead of clashing with it.
+        run: docker compose -p bloom-src up -d --build
+      - name: Wait for health
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8484/health; then echo; exit 0; fi
+            sleep 2
+          done
+          echo "Bloom did not become healthy"; docker logs bloom --tail 50; exit 1
+      - name: Recent logs
+        if: always()
+        run: docker logs bloom --tail 30

@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  server:
+    name: Go server (vet, test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - name: Vet
+        working-directory: server
+        run: go vet ./...
+      - name: Test
+        working-directory: server
+        run: go test ./...
+
+  tvos:
+    name: tvOS app (build)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Xcode version
+        run: xcodebuild -version
+      - name: Build for tvOS Simulator
+        working-directory: apple
+        run: |
+          xcodebuild build \
+            -project BloomTV.xcodeproj \
+            -scheme BloomTV \
+            -destination 'generic/platform=tvOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            | tail -n 60
+          exit ${PIPESTATUS[0]}
