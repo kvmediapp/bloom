@@ -1,18 +1,38 @@
 name: Show Bloom logs
 
-# Manual: prints the latest Bloom server logs from Tower into the run output.
+# Manual: saves the latest Bloom server logs from Tower to bloom.log on the
+# "logs" branch (and prints them in the run output).
 on:
   workflow_dispatch:
     inputs:
       lines:
         description: "How many log lines"
-        default: "200"
+        default: "400"
+
+permissions:
+  contents: write
 
 jobs:
   logs:
     runs-on: [self-hosted, bloom-tower]
     steps:
-      - name: Bloom logs
-        run: docker logs bloom --tail ${{ inputs.lines }} 2>&1
-      - name: Health
-        run: docker run --rm --network container:bloom curlimages/curl:8.10.1 -fsS http://localhost:8484/health
+      - uses: actions/checkout@v4
+      - name: Collect logs
+        run: |
+          {
+            echo "# collected $(date -u +%FT%TZ)"
+            docker run --rm --network container:bloom curlimages/curl:8.10.1 -fsS http://localhost:8484/health || true
+            echo
+            docker logs bloom --tail ${{ inputs.lines }} 2>&1
+          } > /tmp/bloom.log
+          tail -n 40 /tmp/bloom.log
+      - name: Publish to logs branch
+        run: |
+          git config user.name "bloom-bot"
+          git config user.email "bloom-bot@users.noreply.github.com"
+          git checkout --orphan logs-new
+          git rm -rf . -q
+          cp /tmp/bloom.log bloom.log
+          git add bloom.log
+          git commit -q -m "Bloom logs $(date -u +%FT%TZ)"
+          git push -f origin logs-new:logs
