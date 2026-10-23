@@ -28,7 +28,9 @@ jobs:
       - name: Wait for health
         run: |
           for i in $(seq 1 30); do
-            if curl -fsS http://localhost:8484/health; then echo; exit 0; fi
+            # The runner is a container, so "localhost" is not Tower. Join
+            # Bloom's own network namespace to reach its port.
+            if docker run --rm --network container:bloom curlimages/curl:8.10.1 -fsS http://localhost:8484/health; then echo; exit 0; fi
             sleep 2
           done
           echo "Bloom did not become healthy"; docker logs bloom --tail 50; exit 1
