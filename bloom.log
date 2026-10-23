@@ -1,0 +1,42 @@
+# collected 2026-10-23T12:48:36Z
+{"items":15401,"ok":true}
+
+2026/10/23 06:20:50 warning: BLOOM_TOKEN is not set; anyone on your network can use this server
+2026/10/23 06:20:50 bloomd listening on :8484 (media /data/media, cache /config)
+2026/10/23 08:46:05 GET /stream/8aebb9e9a074/index.m3u8 -> 200 (23ms) range=""
+2026/10/23 08:46:06 GET /stream/8aebb9e9a074/init.mp4 -> 200 (2ms) range=""
+2026/10/23 08:46:06 GET /stream/8aebb9e9a074/seg_00000.m4s -> 200 (46ms) range=""
+2026/10/23 08:46:06 GET /stream/8aebb9e9a074/seg_00001.m4s -> 200 (111ms) range=""
+2026/10/23 08:46:07 GET /stream/8aebb9e9a074/seg_00002.m4s -> 200 (257ms) range=""
+2026/10/23 08:46:07 GET /stream/8aebb9e9a074/seg_00003.m4s -> 200 (45ms) range=""
+2026/10/23 08:46:07 GET /stream/8aebb9e9a074/seg_00004.m4s -> 200 (12ms) range=""
+2026/10/23 08:46:07 GET /stream/8aebb9e9a074/seg_00005.m4s -> 200 (9ms) range=""
+2026/10/23 08:46:07 GET /stream/8aebb9e9a074/seg_00006.m4s -> 200 (111ms) range=""
+2026/10/23 08:46:07 GET /stream/8aebb9e9a074/seg_00007.m4s -> 200 (38ms) range=""
+2026/10/23 08:46:07 GET /stream/8aebb9e9a074/seg_00008.m4s -> 200 (88ms) range=""
+2026/10/23 08:46:07 GET /stream/8aebb9e9a074/seg_00009.m4s -> 200 (62ms) range=""
+2026/10/23 08:46:07 GET /stream/8aebb9e9a074/seg_00010.m4s -> 200 (48ms) range=""
+2026/10/23 08:46:07 GET /stream/8aebb9e9a074/seg_00011.m4s -> 200 (79ms) range=""
+2026/10/23 08:46:08 GET /stream/8aebb9e9a074/seg_00012.m4s -> 200 (93ms) range=""
+2026/10/23 08:46:08 GET /stream/8aebb9e9a074/seg_00013.m4s -> 200 (90ms) range=""
+2026/10/23 08:46:08 GET /stream/8aebb9e9a074/seg_00014.m4s -> 200 (41ms) range=""
+2026/10/23 08:46:08 GET /stream/8aebb9e9a074/seg_00015.m4s -> 200 (59ms) range=""
+2026/10/23 08:46:08 GET /stream/8aebb9e9a074/seg_00016.m4s -> 200 (72ms) range=""
+2026/10/23 08:46:08 GET /stream/8aebb9e9a074/seg_00017.m4s -> 200 (47ms) range=""
+2026/10/23 08:46:08 GET /stream/8aebb9e9a074/seg_00018.m4s -> 200 (118ms) range=""
+2026/10/23 08:46:08 GET /stream/8aebb9e9a074/seg_00019.m4s -> 200 (14ms) range=""
+2026/10/23 08:46:08 GET /stream/8aebb9e9a074/seg_00020.m4s -> 200 (51ms) range=""
+2026/10/23 08:46:08 GET /stream/8aebb9e9a074/seg_00021.m4s -> 200 (81ms) range=""
+2026/10/23 08:46:09 GET /stream/8aebb9e9a074/seg_00022.m4s -> 200 (20ms) range=""
+2026/10/23 08:46:09 GET /stream/8aebb9e9a074/seg_00023.m4s -> 200 (16ms) range=""
+2026/10/23 08:46:09 GET /stream/8aebb9e9a074/seg_00024.m4s -> 200 (114ms) range=""
+2026/10/23 08:46:09 GET /stream/8aebb9e9a074/seg_00025.m4s -> 200 (70ms) range=""
+2026/10/23 08:47:06 GET /stream/2dc7001afde1/index.m3u8 -> 502 (20.251s) range=""
+2026/10/23 08:47:55 GET /stream/444a83e9da7e/index.m3u8 -> 502 (19.97s) range=""
+2026/10/23 08:48:19 GET /stream/56c2b56f895c/index.m3u8 -> 502 (19.873s) range=""
+2026/10/23 08:48:53 playlist ready for Behind Us a Cliff: 543 segments after 2m13.258s
+2026/10/23 08:49:53 playlist ready for The Hedge Knight: 415 segments after 1m55.344s
+2026/10/23 08:50:07 playlist ready for River: 399 segments after 2m32.99s
+2026/10/23 08:51:18 remux finished for The Hedge Knight in 3m19.867s
+2026/10/23 08:56:02 remux finished for River in 8m28.671s
+2026/10/23 08:56:03 remux finished for Behind Us a Cliff in 9m23.12s
