@@ -1,0 +1,18 @@
+name: Show Bloom logs
+
+# Manual: prints the latest Bloom server logs from Tower into the run output.
+on:
+  workflow_dispatch:
+    inputs:
+      lines:
+        description: "How many log lines"
+        default: "200"
+
+jobs:
+  logs:
+    runs-on: [self-hosted, bloom-tower]
+    steps:
+      - name: Bloom logs
+        run: docker logs bloom --tail ${{ inputs.lines }} 2>&1
+      - name: Health
+        run: docker run --rm --network container:bloom curlimages/curl:8.10.1 -fsS http://localhost:8484/health
