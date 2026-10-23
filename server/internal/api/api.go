@@ -85,13 +85,20 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ctx, cancel := context.WithTimeout(r.Context(), 90*time.Second)
+	defer cancel()
 	if file == "index.m3u8" {
-		ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
-		defer cancel()
 		if err := s.HLS.WaitPlaylist(ctx, id); err != nil {
 			http.Error(w, err.Error(), http.StatusBadGateway)
 			return
 		}
+	} else if err := s.HLS.WaitFile(ctx, id, file); err != nil {
+		if errors.Is(err, hls.ErrNoSuchFile) {
+			http.NotFound(w, r)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
 	}
 
 	path := filepath.Join(s.HLS.Dir(id), file)

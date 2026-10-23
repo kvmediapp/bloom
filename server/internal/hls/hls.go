@@ -1,14 +1,16 @@
 // Package hls turns library files into Apple-compatible HLS (fragmented MP4).
 //
-// Phase 0 runs one ffmpeg process per title, started on first request. Video
-// is copied without re-encoding; only incompatible audio is converted. The
-// playlist is an EVENT playlist, so playback can begin as soon as the first
-// segments exist and the playlist is finalized when ffmpeg finishes.
+// One ffmpeg process per title is started on first request. Video is copied
+// without re-encoding; only incompatible audio is converted. While ffmpeg
+// runs, we publish a complete VOD playlist built from the file's keyframe
+// index, so the player can seek anywhere at once. A request for a segment
+// ffmpeg has not produced yet waits for it.
 package hls
 
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -26,8 +28,16 @@ import (
 var ErrUnsupported = errors.New("file needs a video transcode, which is not built yet")
 
 type job struct {
-	done chan struct{}
-	err  error
+	ready chan struct{} // closed once index.m3u8 is written (or the job failed)
+	done  chan struct{} // closed when ffmpeg has exited
+	err   error
+}
+
+const doneMarker = ".done.v2"
+
+type keyIndex struct {
+	Keyframes []float64 `json:"keyframes"`
+	End       float64   `json:"end"`
 }
 
 // Manager starts and tracks remux jobs.
@@ -57,8 +67,9 @@ func (m *Manager) Ensure(it media.Item) error {
 		return nil
 	}
 	dir := m.Dir(it.ID)
-	j := &job{done: make(chan struct{})}
-	if _, err := os.Stat(filepath.Join(dir, ".done")); err == nil {
+	j := &job{ready: make(chan struct{}), done: make(chan struct{})}
+	if _, err := os.Stat(filepath.Join(dir, doneMarker)); err == nil {
+		close(j.ready)
 		close(j.done)
 		m.jobs[it.ID] = j
 		return nil
@@ -79,19 +90,78 @@ func (m *Manager) run(it media.Item, dir string, j *job) {
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 
-	start := time.Now()
-	err := cmd.Run()
-	if err != nil {
-		j.err = fmt.Errorf("ffmpeg: %w: %s", err, tail(stderr.String(), 800))
-		log.Printf("remux failed for %s: %v", it.Title, j.err)
+	fail := func(err error) {
+		j.err = err
+		log.Printf("remux failed for %s: %v", it.Title, err)
 		m.mu.Lock()
 		delete(m.jobs, it.ID) // allow a retry on the next request
 		m.mu.Unlock()
-	} else {
-		_ = os.WriteFile(filepath.Join(dir, ".done"), nil, 0o644)
-		log.Printf("remux finished for %s in %s", it.Title, time.Since(start).Round(time.Millisecond))
+		select {
+		case <-j.ready:
+		default:
+			close(j.ready)
+		}
+		close(j.done)
 	}
+
+	start := time.Now()
+	if err := cmd.Start(); err != nil {
+		fail(fmt.Errorf("start ffmpeg: %w", err))
+		return
+	}
+
+	// While ffmpeg runs, build the full playlist from the keyframe index.
+	segs, err := m.plan(it, src)
+	if err != nil {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+		fail(fmt.Errorf("keyframe index: %w", err))
+		return
+	}
+	if err := writeAtomic(filepath.Join(dir, "index.m3u8"), []byte(VODPlaylist(segs))); err != nil {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+		fail(err)
+		return
+	}
+	log.Printf("playlist ready for %s: %d segments after %s", it.Title, len(segs), time.Since(start).Round(time.Millisecond))
+	close(j.ready)
+
+	if err := cmd.Wait(); err != nil {
+		fail(fmt.Errorf("ffmpeg: %w: %s", err, tail(stderr.String(), 800)))
+		return
+	}
+	_ = os.WriteFile(filepath.Join(dir, doneMarker), nil, 0o644)
+	log.Printf("remux finished for %s in %s", it.Title, time.Since(start).Round(time.Millisecond))
 	close(j.done)
+}
+
+// plan returns the segment plan, using a cached keyframe index when present.
+func (m *Manager) plan(it media.Item, src string) ([]Segment, error) {
+	cache := filepath.Join(m.CacheDir, "index", it.ID+".json")
+	var idx keyIndex
+	if b, err := os.ReadFile(cache); err == nil && json.Unmarshal(b, &idx) == nil && len(idx.Keyframes) > 0 {
+		return PlanSegments(idx.Keyframes, idx.End, SegmentTarget), nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+	kf, end, err := Keyframes(ctx, src)
+	if err != nil {
+		return nil, err
+	}
+	if b, err := json.Marshal(keyIndex{Keyframes: kf, End: end}); err == nil {
+		_ = os.MkdirAll(filepath.Dir(cache), 0o755)
+		_ = writeAtomic(cache, b)
+	}
+	return PlanSegments(kf, end, SegmentTarget), nil
+}
+
+func writeAtomic(path string, b []byte) error {
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, b, 0o644); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
 }
 
 // BuildArgs returns the ffmpeg arguments for a plan. Exported for tests.
@@ -120,13 +190,12 @@ func BuildArgs(src string, p media.Plan) []string {
 		"-hls_flags", "independent_segments+temp_file",
 		"-hls_fmp4_init_filename", "init.mp4",
 		"-hls_segment_filename", "seg_%05d.m4s",
-		"index.m3u8",
+		"ffmpeg.m3u8",
 	)
 	return args
 }
 
-// WaitPlaylist blocks until the playlist has two segments (enough to start
-// playback) or the remux has finished.
+// WaitPlaylist blocks until the full playlist has been written.
 func (m *Manager) WaitPlaylist(ctx context.Context, id string) error {
 	m.mu.Lock()
 	j := m.jobs[id]
@@ -134,26 +203,59 @@ func (m *Manager) WaitPlaylist(ctx context.Context, id string) error {
 	if j == nil {
 		return errors.New("no remux job for this title")
 	}
-	playlist := filepath.Join(m.Dir(id), "index.m3u8")
-	tick := time.NewTicker(100 * time.Millisecond)
+	select {
+	case <-j.ready:
+		return j.err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+// ErrNoSuchFile means the file will never exist (ffmpeg finished without it).
+var ErrNoSuchFile = errors.New("no such segment")
+
+// WaitFile blocks until a segment or init file exists. ffmpeg writes files
+// under a temporary name and renames them when complete, so existence means
+// the file is whole. The init segment is served only after the first media
+// segment exists, because ffmpeg finishes it just before that.
+func (m *Manager) WaitFile(ctx context.Context, id, name string) error {
+	m.mu.Lock()
+	j := m.jobs[id]
+	m.mu.Unlock()
+	if j == nil {
+		return errors.New("no remux job for this title")
+	}
+	dir := m.Dir(id)
+	gate := name
+	if name == "init.mp4" {
+		gate = "seg_00000.m4s"
+	}
+	exists := func() bool { _, err := os.Stat(filepath.Join(dir, gate)); return err == nil }
+	tick := time.NewTicker(50 * time.Millisecond)
 	defer tick.Stop()
 	for {
+		if exists() {
+			return nil
+		}
 		select {
 		case <-j.done:
-			return j.err
+			if exists() {
+				return nil
+			}
+			if j.err != nil {
+				return j.err
+			}
+			return ErrNoSuchFile
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-tick.C:
-			if b, err := os.ReadFile(playlist); err == nil && bytes.Count(b, []byte("#EXTINF")) >= 2 {
-				return nil
-			}
 		}
 	}
 }
 
 // Finished reports whether a title's remux has completed.
 func (m *Manager) Finished(id string) bool {
-	_, err := os.Stat(filepath.Join(m.Dir(id), ".done"))
+	_, err := os.Stat(filepath.Join(m.Dir(id), doneMarker))
 	return err == nil
 }
 
