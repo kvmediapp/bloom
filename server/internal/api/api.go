@@ -36,7 +36,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/items", s.items)
 	mux.HandleFunc("POST /api/scan", s.scan)
 	mux.HandleFunc("GET /stream/{id}/{file}", s.stream)
-	return s.auth(mux)
+	return logRequests(s.auth(mux))
 }
 
 func (s *Server) auth(next http.Handler) http.Handler {
@@ -115,4 +115,29 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
+}
+
+type statusWriter struct {
+	http.ResponseWriter
+	status int
+}
+
+func (w *statusWriter) WriteHeader(code int) {
+	w.status = code
+	w.ResponseWriter.WriteHeader(code)
+}
+
+// logRequests logs every stream request with its status and duration, so a
+// player stall can be matched to the exact segment that failed.
+func logRequests(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasPrefix(r.URL.Path, "/stream/") {
+			next.ServeHTTP(w, r)
+			return
+		}
+		sw := &statusWriter{ResponseWriter: w, status: http.StatusOK}
+		start := time.Now()
+		next.ServeHTTP(sw, r)
+		log.Printf("%s %s -> %d (%s) range=%q", r.Method, r.URL.Path, sw.status, time.Since(start).Round(time.Millisecond), r.Header.Get("Range"))
+	})
 }
